@@ -1,0 +1,31 @@
+{
+  "name": "@harry/response-extensions",
+  "displayName": "Response Extensions",
+  "description": "Access OAuth2 tokens and other extended response attributes from other requests",
+  "version": "0.0.1",
+  "author": "Harry Brayford",
+  "license": "MIT",
+  "keywords": [
+    "yaak-plugin",
+    "oauth2",
+    "response",
+    "authentication",
+    "template-function"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/h4rryb/yaak-plugin-response-extensions"
+  },
+  "scripts": {
+    "build": "yaakcli build",
+    "dev": "yaakcli dev"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "@yaakapp/cli": "^0.2.6",
+    "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@yaakapp/api": "^0.6.4"
+  }
+}
