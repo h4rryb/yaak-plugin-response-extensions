@@ -2,7 +2,7 @@
   "name": "@harry/response-extensions",
   "displayName": "Response Extensions",
   "description": "Access OAuth2 tokens and other extended response attributes from other requests",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "author": "Harry Brayford",
   "license": "MIT",
   "keywords": [

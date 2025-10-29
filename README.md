@@ -44,7 +44,7 @@ A Yaak plugin that provides access to extended response attributes, including OA
 
 ## Usage
 
-This plugin provides three template functions that you can use in any text field in Yaak:
+This plugin provides four template functions that you can use in any text field in Yaak:
 
 ### 1. `responseExtensions.oauth2`
 
@@ -95,24 +95,74 @@ Status: ${[ responseExtensions.response(api_request, '$.statusCode') ]}
 - `$.bytesRead` - Response size in bytes
 - `$` - Full response metadata object
 
-### 3. `responseExtensions` (Generic)
+### 3. `responseExtensions.body`
+
+Extract data from the response body using JSONPath.
+
+**Syntax:**
+```
+${[ responseExtensions.body(request, filter, behavior) ]}
+```
+
+**Example - Extract Token from Response Body:**
+```json
+{
+  "Authorization": "Bearer ${[ responseExtensions.body(login_request, '$.access_token') ]}"
+}
+```
+
+**Example - Extract Nested Data:**
+```
+User ID: ${[ responseExtensions.body(api_request, '$.data.user.id') ]}
+```
+
+**Available Parameters:**
+- `request` - The request whose response body you want to extract from
+- `filter` - JSONPath to extract specific data (default: `$` for entire body)
+- `behavior` - When to send the request (default: "When no responses")
+  - "When no responses" - Only send if no cached response exists
+  - "Always" - Send the request every time
+  - "Never" - Never send, only use cached response
+
+### 4. `responseExtensions` (Generic)
 
 A generic function that accepts an attribute type parameter.
 
 **Syntax:**
 ```
-${[ responseExtensions(request, attribute_type, filter) ]}
+${[ responseExtensions(request, attribute_type, filter, behavior) ]}
 ```
+
+**Attribute Types:**
+- `'body'` - Extract from response body (default)
+- `'oauth2'` - Extract OAuth2 token data
+- `'response'` - Extract response metadata
 
 **Example:**
 ```json
 {
-  "Token": "${[ responseExtensions(oauth_request, 'oauth2', '$.accessToken') ]}",
+  "Body Token": "${[ responseExtensions(api_request, 'body', '$.token') ]}",
+  "OAuth Token": "${[ responseExtensions(oauth_request, 'oauth2', '$.accessToken') ]}",
   "Status": "${[ responseExtensions(api_request, 'response', '$.statusCode') ]}"
 }
 ```
 
 ## Common Use Cases
+
+### Sending Behavior
+
+All functions support a "behavior" parameter that controls when the source request is sent:
+
+- **"When no responses" (smart)** - Default. Only sends the request if there's no cached response. Perfect for auth tokens that persist across sessions.
+- **"Always"** - Sends the request every time the template is rendered. Useful for real-time data or tokens that expire quickly.
+- **"Never"** - Never sends the request, only uses cached responses. Good for viewing historical data.
+
+**Example:**
+```json
+{
+  "token": "${[ responseExtensions.oauth2(auth, '$.accessToken', 'smart') ]}"
+}
+```
 
 ### 1. OAuth2 Authentication Flow
 
@@ -134,7 +184,34 @@ Set up a centralized OAuth2 authentication:
 Authorization: Bearer ${[ access_token ]}
 ```
 
-### 2. Request Chaining with Response Metadata
+### 2. Extract Token from Response Body
+
+Get an authentication token directly from a login response:
+
+**Step 1:** Create a login request (e.g., POST to `/auth/login`)
+
+**Step 2:** Extract token from response body:
+```json
+{
+  "api_token": "${[ responseExtensions.body(login_request, '$.access_token') ]}"
+}
+```
+
+**Step 3:** Use in subsequent requests:
+```
+Authorization: Bearer ${[ api_token ]}
+```
+
+This works for any API that returns tokens in the response body, like:
+```json
+{
+  "success": true,
+  "access_token": "abc123xyz",
+  "expires_in": 3600
+}
+```
+
+### 3. Request Chaining with Response Metadata
 
 Check if a request succeeded before proceeding:
 ```json
@@ -144,7 +221,7 @@ Check if a request succeeded before proceeding:
 }
 ```
 
-### 3. Extract Specific Headers
+### 4. Extract Specific Headers
 
 Get a specific response header value:
 ```
@@ -169,14 +246,34 @@ Collection/
 
 ## JSONPath Examples
 
-JSONPath is a powerful query language for JSON. Here are some useful patterns:
+The plugin includes a built-in JSONPath implementation that supports common query patterns:
 
+**Supported Patterns:**
 - `$` - Root object (returns everything)
 - `$.field` - Access a specific field
+- `$.nested.field` - Access nested fields
 - `$.array[0]` - First element of an array
-- `$.array[*]` - All elements in an array
-- `$..field` - Recursive search for field
-- `$.array[?(@.name=="value")]` - Filter array elements
+- `$.nested.array[5]` - Nested array access
+
+**Examples:**
+
+**Supported Patterns:**
+- `$` - Root object (returns everything)
+- `$.field` - Access a specific field
+- `$.nested.field` - Access nested fields
+- `$.array[0]` - First element of an array
+- `$.nested.array[5]` - Nested array access
+
+**Examples:**
+```
+$.accessToken          → "abc123..."
+$.statusCode           → 200
+$.headers[0]           → First header object
+$.oauth2Data.expiresAt → 1698765432
+$                      → Entire object as JSON
+```
+
+**Note:** The plugin uses a lightweight built-in JSONPath parser. For complex queries with filters (e.g., `$.headers[?(@.name=="X-ID")]`), consider using Yaak's built-in response functions or preprocessing the data.
 
 ## Troubleshooting
 

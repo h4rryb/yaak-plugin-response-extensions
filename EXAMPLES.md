@@ -1,6 +1,44 @@
 # Examples
 
-## Example 1: OAuth2 Access Token in Environment Variable
+## Example 1: Extract Token from Response Body
+
+**Scenario:** Your API returns an access token in the response body of a login request.
+
+### Login Response:
+```json
+{
+  "status": "success",
+  "data": {
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refresh_token": "def50200a1b2c3...",
+    "expires_in": 3600,
+    "user": {
+      "id": 12345,
+      "email": "user@example.com"
+    }
+  }
+}
+```
+
+### Extract and Use Token:
+
+**Environment Variable:**
+```json
+{
+  "access_token": "${[ responseExtensions.body(login_request, '$.data.access_token') ]}",
+  "user_id": "${[ responseExtensions.body(login_request, '$.data.user.id') ]}"
+}
+```
+
+**Use in Request:**
+```
+Authorization: Bearer ${[ access_token ]}
+X-User-ID: ${[ user_id ]}
+```
+
+---
+
+## Example 12: OAuth2 Access Token in Environment Variable
 
 **Scenario:** You want to use the same OAuth2 token across multiple requests.
 
@@ -33,7 +71,7 @@ Authorization: Bearer ${[ access_token ]}
 
 ---
 
-## Example 2: Using OAuth2 Refresh Token
+## Example 12: Using OAuth2 Refresh Token
 
 **Environment Variable:**
 ```json
@@ -53,7 +91,7 @@ Authorization: Bearer ${[ access_token ]}
 
 ---
 
-## Example 3: Multi-Service Authentication
+## Example 12: Multi-Service Authentication
 
 **Folder Structure:**
 ```
@@ -84,7 +122,7 @@ My API Collection/
 
 ---
 
-## Example 4: Extracting Response Status Code
+## Example 12: Extracting Response Status Code
 
 **Use Case:** Check the status of a previous request before proceeding.
 
@@ -99,12 +137,17 @@ My API Collection/
 
 ---
 
-## Example 5: Extracting Response Headers
+## Example 12: Extracting Response Headers
 
-**Get a specific header value:**
+**Get all headers as JSON:**
 
 ```
-X-Request-ID: ${[ responseExtensions.response(api_request, '$.headers[?(@.name=="X-Request-ID")].value') ]}
+${[ responseExtensions.response(api_request, '$.headers') ]}
+```
+
+**Get first header:**
+```
+${[ responseExtensions.response(api_request, '$.headers[0]') ]}
 ```
 
 **Get Content-Type:**
@@ -112,9 +155,11 @@ X-Request-ID: ${[ responseExtensions.response(api_request, '$.headers[?(@.name==
 ${[ responseExtensions.response(api_request, '$.contentType') ]}
 ```
 
+**Note:** For filtering specific headers by name, use Yaak's built-in `response.header` function instead.
+
 ---
 
-## Example 6: Check OAuth2 Token Expiration
+## Example 12: Check OAuth2 Token Expiration
 
 **Environment Variable:**
 ```json
@@ -129,7 +174,7 @@ You can then check `${[ token_expires_at ]}` to see when your token will expire.
 
 ---
 
-## Example 7: Debugging OAuth2 Errors
+## Example 12: Debugging OAuth2 Errors
 
 **Environment Variable:**
 ```json
@@ -151,7 +196,7 @@ You can then check `${[ token_expires_at ]}` to see when your token will expire.
 
 ---
 
-## Example 8: Complex JSONPath Queries
+## Example 12: Complex JSONPath Queries
 
 **Get all response headers:**
 ```json
@@ -171,7 +216,7 @@ This will return the entire OAuth2 object as JSON.
 
 ---
 
-## Example 9: Dynamic Request URLs
+## Example 12: Dynamic Request URLs
 
 **Use response metadata in subsequent requests:**
 
@@ -181,7 +226,7 @@ https://api.example.com/callback?previous_status=${[ responseExtensions.response
 
 ---
 
-## Example 10: Conditional Authentication
+## Example 12: Conditional Authentication
 
 **Base Environment:**
 ```json
@@ -193,7 +238,7 @@ https://api.example.com/callback?previous_status=${[ responseExtensions.response
 
 ---
 
-## Example 11: JWT Identity Token
+## Example 12: JWT Identity Token
 
 Some OAuth2 providers return an identity token (JWT):
 
