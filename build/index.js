@@ -98,6 +98,7 @@ var plugin = {
         },
         behaviorArg
       ],
+      previewArgs: ["request", "filter"],
       async onRender(ctx, args) {
         if (!args.values.request) return null;
         try {
@@ -150,6 +151,7 @@ var plugin = {
         },
         behaviorArg
       ],
+      previewArgs: ["request", "filter"],
       async onRender(ctx, args) {
         if (!args.values.request) return null;
         try {
@@ -202,6 +204,7 @@ var plugin = {
         },
         behaviorArg
       ],
+      previewArgs: ["request", "filter"],
       async onRender(ctx, args) {
         if (!args.values.request) return null;
         try {
@@ -268,6 +271,7 @@ var plugin = {
         },
         behaviorArg
       ],
+      previewArgs: ["request", "attribute", "filter"],
       async onRender(ctx, args) {
         if (!args.values.request) return null;
         const attribute = args.values.attribute || "body";
