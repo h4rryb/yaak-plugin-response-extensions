@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 /**
  * Yaak plugin to access extended response attributes including OAuth2 tokens
  * This replicates the functionality of insomnia-plugin-response-extensions
- */
+ */ 
 
 /**
  * Simple JSONPath implementation for basic queries
