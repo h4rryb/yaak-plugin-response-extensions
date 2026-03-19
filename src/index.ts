@@ -115,6 +115,7 @@ export const plugin: PluginDefinition = {
         },
         behaviorArg,
       ],
+      previewArgs: ['request', 'filter'],
       async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
         if (!args.values.request) return null;
 
@@ -180,6 +181,7 @@ export const plugin: PluginDefinition = {
         },
         behaviorArg,
       ],
+      previewArgs: ['request', 'filter'],
       async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
         if (!args.values.request) return null;
 
@@ -242,6 +244,7 @@ export const plugin: PluginDefinition = {
         },
         behaviorArg,
       ],
+      previewArgs: ['request', 'filter'],
       async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
         if (!args.values.request) return null;
 
@@ -321,6 +324,7 @@ export const plugin: PluginDefinition = {
         },
         behaviorArg,
       ],
+      previewArgs: ['request', 'attribute', 'filter'],
       async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
         if (!args.values.request) return null;
 
