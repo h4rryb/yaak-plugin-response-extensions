@@ -1,5 +1,9 @@
 # Yaak Response Extensions Plugin
 
+**Version:** 0.2.0 (Experimental)
+
+⚠️ **Experimental Status**: This plugin uses Yaak's experimental plugin API. While stable and production-ready, we use 0.x versioning to reflect that Yaak's plugin system is still evolving.
+
 A Yaak plugin that provides access to extended response attributes, including OAuth2 tokens and response metadata. This plugin replicates the functionality of the popular Insomnia `insomnia-plugin-response-extensions`.
 
 ## Features

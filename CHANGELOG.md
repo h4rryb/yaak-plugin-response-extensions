@@ -1,13 +1,13 @@
 # Release Notes & Changelog
 
-## Version 1.2.0 - Latest Yaak Compatibility
+## Version 0.2.0 - Latest Yaak Compatibility (Experimental)
 
 ### 🔄 Compatibility Updates
 
 #### Updated Dependencies
 - ✅ Updated `@yaakapp/api` from `^0.6.4` to `^0.8.3`
-- ✅ Ensures compatibility with Yaak 2025.9.0+
-- ✅ Backward compatible with earlier Yaak versions
+- ✅ Ensures compatibility with Yaak 2026.3.1 and earlier versions
+- ✅ Backward compatible with Yaak 2025.x versions
 
 #### Preview Args Support
 - ✅ Added `previewArgs` to all template functions
@@ -15,14 +15,17 @@
 - ✅ Shows request name and filter in preview
 
 ### 🐛 Fixes
-- Fixed compatibility with Yaak 2025.9.0 and later
+- Fixed compatibility with Yaak 2026.x series
 - Resolved type errors with newer API versions
 - Improved preview display for all functions
 
 ### 📝 Technical Details
-- No breaking changes
+- No breaking changes from 0.1.0
 - No new features (compatibility update only)
 - All existing functionality works the same
+
+### ⚠️ Experimental Notice
+This plugin uses Yaak's experimental plugin API. While stable, the API may change in future Yaak versions. Using 0.x versioning to reflect this experimental status.
 
 ### Migration
 No code changes needed! Just:
@@ -34,7 +37,7 @@ Then reload in Yaak.
 
 ---
 
-## Version 1.1.0 - Body Extraction & Behavior Control
+## Version 0.1.0 - Body Extraction & Behavior Control (Experimental)
 
 ### 🎉 New Features
 
@@ -74,13 +77,13 @@ Then reload in Yaak.
 - Updated EXAMPLES.md with 12 examples
 
 ### Migration
-- ✅ No breaking changes
-- ✅ Backward compatible with v1.0.0
+- ✅ No breaking changes from 0.0.1
+- ✅ Backward compatible
 - ✅ Existing code works without modifications
 
 ---
 
-## Version 1.0.0 - Initial Release
+## Version 0.0.1 - Initial Release (Experimental)
 
 ### Features
 

@@ -1,8 +1,10 @@
-# Version 1.2.0 - Latest Yaak Compatibility Update
+# Version 0.2.0 - Latest Yaak Compatibility Update (Experimental)
 
 ## 🔄 Compatibility Fix for Latest Yaak Versions
 
-This update ensures the plugin works with the latest Yaak versions (2025.9.0+).
+This update ensures the plugin works with the latest Yaak versions (2026.3.1 and earlier).
+
+⚠️ **Experimental Status**: This plugin uses Yaak's experimental plugin API. While stable and well-tested, the API may change in future Yaak releases. We're using 0.x versioning to reflect this experimental nature.
 
 ## What Changed
 
@@ -11,9 +13,10 @@ This update ensures the plugin works with the latest Yaak versions (2025.9.0+).
 **After:** `^0.8.3` (latest)
 
 This brings compatibility with Yaak versions:
+- ✅ 2026.3.1 (tested and working!)
+- ✅ 2026.2.x series
+- ✅ 2026.1.0
 - ✅ 2025.9.0 and later
-- ✅ 2025.8.0
-- ✅ 2025.7.0
 - ✅ All earlier versions still supported
 
 ### 2. Added previewArgs Feature
@@ -96,7 +99,9 @@ Then reload the plugin in Yaak:
 
 ## Tested With
 
-- ✅ Yaak 2025.9.3 (latest as of Dec 2025)
+- ✅ Yaak 2026.3.1 (latest tested - working!)
+- ✅ Yaak 2026.2.4
+- ✅ Yaak 2025.9.3
 - ✅ Yaak 2025.9.0
 - ✅ Yaak 2025.8.0
 - ✅ Earlier versions via backward compatibility
@@ -115,7 +120,7 @@ None reported. If you encounter any issues:
 
 ## Migration Guide
 
-### From v1.1.0 to v1.2.0
+### From v0.1.0 to v0.2.0
 
 No code changes needed! Just update:
 
@@ -136,18 +141,18 @@ This plugin now uses the latest Yaak plugin API and will be compatible with futu
 
 ## Changelog Summary
 
-**v1.2.0 (Latest)**
+**v0.2.0 (Latest - Experimental)**
 - Updated `@yaakapp/api` to `^0.8.3`
 - Added `previewArgs` to all template functions
-- Ensured compatibility with Yaak 2025.9.0+
+- Ensured compatibility with Yaak 2026.3.1
 - No breaking changes
 
-**v1.1.0**
+**v0.1.0 (Experimental)**
 - Added response body extraction
 - Added sending behavior control
 - Fixed blank preview issue
 
-**v1.0.0**
+**v0.0.1 (Experimental)**
 - Initial release
 - OAuth2 token extraction
 - Response metadata extraction
@@ -170,7 +175,7 @@ If you're having issues after updating:
 
 3. **Verify plugin version:**
    - Settings → Plugins
-   - Should show "Response Extensions v1.2.0"
+   - Should show "Response Extensions v0.2.0"
 
 ## What's Next
 
@@ -178,7 +183,9 @@ This plugin is now up to date with the latest Yaak API. Future updates will trac
 
 ---
 
-**Updated:** December 2025  
-**Plugin Version:** 1.2.0  
-**Yaak Compatibility:** 2025.7.0+  
+**Updated:** March 2026  
+**Plugin Version:** 0.2.0 (Experimental)  
+**Yaak Compatibility:** 2026.3.1 and earlier  
 **API Version:** 0.8.3
+
+⚠️ **Note**: Using 0.x versioning to reflect Yaak's experimental plugin API status.
