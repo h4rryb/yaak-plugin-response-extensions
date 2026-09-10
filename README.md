@@ -1,8 +1,27 @@
 # Yaak Response Extensions Plugin
 
-**Version:** 0.2.0 (Experimental)
+**Version:** 0.3.0 (Experimental)
 
 ⚠️ **Experimental Status**: This plugin uses Yaak's experimental plugin API. While stable and production-ready, we use 0.x versioning to reflect that Yaak's plugin system is still evolving.
+
+## Requirements
+
+| | |
+|---|---|
+| **Yaak** | 2026.7.1 or newer |
+| **`@yaakapp/api`** | 0.9.0 or newer |
+| **Node.js** (to build from source) | 24 or newer |
+
+> **⚠️ Version 0.3.0 is not backward compatible.** Yaak 2026.7.1 removed
+> `HttpResponse.bodyPath` and changed `ctx.httpRequest.send()` to resolve to
+> `{ httpResponse, body }`. Plugin versions 0.2.x and earlier cannot read
+> response bodies on Yaak 2026.7.1+, and 0.3.0 cannot run on Yaak 2026.3.1 or
+> earlier. Pick the version that matches your Yaak:
+>
+> | Your Yaak version | Use plugin version |
+> |---|---|
+> | 2026.7.1 and newer | **0.3.0** |
+> | 2026.3.1 and older | 0.2.0 |
 
 A Yaak plugin that provides access to extended response attributes, including OAuth2 tokens and response metadata. This plugin replicates the functionality of the popular Insomnia `insomnia-plugin-response-extensions`.
 
@@ -24,15 +43,17 @@ A Yaak plugin that provides access to extended response attributes, including OA
 
 ### Manual Installation
 
-1. Install the Yaak CLI:
+1. Check you have Node.js 24 or newer — the Yaak CLI refuses to build on
+   anything older:
    ```bash
-   npm install -g @yaakapp/cli
+   node --version
    ```
 
 2. Clone or download this plugin
-3. Install dependencies:
+3. Install dependencies (this installs the correct Yaak CLI locally, so there is
+   no need to install it globally):
    ```bash
-   cd yaak-response-extensions-plugin
+   cd yaak-plugin-response-extensions
    npm install
    ```
 
@@ -97,6 +118,10 @@ Status: ${[ responseExtensions.response(api_request, '$.statusCode') ]}
 - `$.headers` - Array of response headers
 - `$.elapsedTime` - Request duration in milliseconds
 - `$.bytesRead` - Response size in bytes
+- `$.remoteAddr` - IP address the response came from
+- `$.httpVersion` - Negotiated HTTP version (e.g. `HTTP/2`)
+- `$.state` - Response state (`initialized`, `connected`, `closed`)
+- `$.error` - Transport error message, or `null` if the request succeeded
 - `$` - Full response metadata object
 
 ### 3. `responseExtensions.body`
@@ -227,10 +252,20 @@ Check if a request succeeded before proceeding:
 
 ### 4. Extract Specific Headers
 
-Get a specific response header value:
+The `Content-Type` header has a dedicated field, looked up case-insensitively:
 ```
-${[ responseExtensions.response(api_request, '$.headers[?(@.name=="X-Request-ID")].value') ]}
+${[ responseExtensions.response(api_request, '$.contentType') ]}
 ```
+
+Any other header is reached by its position in the `headers` array:
+```
+${[ responseExtensions.response(api_request, '$.headers[0].value') ]}
+```
+
+> **Note:** Filter expressions such as `$.headers[?(@.name=="X-Request-ID")]`
+> are **not** supported by the built-in JSONPath parser — see
+> [JSONPath Examples](#jsonpath-examples). Use `$.headers` to dump the full
+> array and find the index you need.
 
 ## Folder-Level Configuration
 
@@ -260,15 +295,6 @@ The plugin includes a built-in JSONPath implementation that supports common quer
 - `$.nested.array[5]` - Nested array access
 
 **Examples:**
-
-**Supported Patterns:**
-- `$` - Root object (returns everything)
-- `$.field` - Access a specific field
-- `$.nested.field` - Access nested fields
-- `$.array[0]` - First element of an array
-- `$.nested.array[5]` - Nested array access
-
-**Examples:**
 ```
 $.accessToken          → "abc123..."
 $.statusCode           → 200
@@ -281,10 +307,21 @@ $                      → Entire object as JSON
 
 ## Troubleshooting
 
+### Nothing renders at all / template tag stays blank
+- Check your Yaak version under `Settings` → `About`. Plugin 0.3.0 requires
+  Yaak **2026.7.1 or newer** (see [Requirements](#requirements)).
+- Rebuild the plugin (`npm install && npm run build`) and reload it in Yaak.
+
 ### No OAuth2 data returned
 - Ensure the source request has OAuth2 authentication configured
 - Verify the request has been executed at least once
 - Check that the JSONPath filter is correct
+- **Known limitation:** `responseExtensions.oauth2` reads the request's stored
+  authentication config. Yaak's built-in OAuth2 provider may keep the
+  *negotiated* tokens in its own plugin store rather than on the request, in
+  which case `$.accessToken` returns empty. If that happens, extract the token
+  from the token endpoint's response body instead:
+  `${[ responseExtensions.body(token_request, '$.access_token') ]}`
 
 ### Response metadata not found
 - Make sure the source request has been executed
@@ -308,9 +345,15 @@ This plugin provides equivalent functionality to `insomnia-plugin-response-exten
 ## Development
 
 ### Building
+
+Requires Node.js 24 or newer.
+
 ```bash
 npm run build
 ```
+
+This writes `build/index.js` and `build/metadata.json`. Both are part of the
+plugin — commit them together.
 
 ### Development Mode
 ```bash

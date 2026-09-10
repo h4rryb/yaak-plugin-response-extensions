@@ -1,5 +1,47 @@
 # Release Notes & Changelog
 
+## Version 0.3.0 - Yaak 2026.7.1 Plugin API
+
+### 💥 Breaking (Yaak)
+Requires Yaak **2026.7.1+** / `@yaakapp/api` **0.9.0+**. Not backward compatible
+with earlier Yaak versions, because `HttpResponse.bodyPath` no longer exists.
+
+### 🐛 Fixes
+- **`responseExtensions.body` works again.** Response bodies are no longer read
+  off disk via `HttpResponse.bodyPath` (removed in the 0.9.0 API). Cached
+  responses now use `ctx.httpResponse.body({ responseId })`; freshly sent ones
+  use the `body` handed back by `ctx.httpRequest.send()`.
+- **`ctx.httpRequest.send()` called correctly.** It takes
+  `{ httpRequest }`, not `{ id }`, and now resolves to `{ httpResponse, body }`.
+  The response is taken from that result instead of re-querying, removing a race
+  where the re-fetch could return a stale response.
+- **OAuth2 detection fixed.** Checked `authentication.type`; the scheme is
+  actually on `httpRequest.authenticationType`, so every request looked
+  non-OAuth2 and the function always returned `null`.
+- **`responseExtensions.response` fields fixed.** `statusMessage`, `contentType`
+  and `bytesRead` read non-existent fields (`statusText`, `contentType`, `size`)
+  and silently returned `""`/`0`. Now mapped to `statusReason`, the
+  `Content-Type` header, and `contentLength`.
+
+### ✨ Improvements
+- Added `remoteAddr`, `httpVersion`, `state` and `error` to response metadata.
+- `responseExtensions.response` no longer opens the response body it never reads.
+- Generic `responseExtensions` delegates by name rather than array index.
+- Failed source requests are reported instead of returning a body of `null`.
+- `tsconfig.json` now includes `src/**/*.ts` (it pointed at a non-existent
+  root `index.ts`, so the source was never type-checked).
+
+### 📝 Migration
+```bash
+npm install
+npm run build
+```
+Then reload the plugin in Yaak. Requires Node.js 24+ to build (`@yaakapp/cli`
+2026.7.1 enforces this). No template syntax changed — your existing
+`${[ ... ]}` tags keep working.
+
+---
+
 ## Version 0.2.0 - Latest Yaak Compatibility (Experimental)
 
 ### 🔄 Compatibility Updates
