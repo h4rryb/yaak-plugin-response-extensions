@@ -109,16 +109,28 @@ async function resolveResponse(
 
   const existing = await ctx.httpResponse.find({ requestId: httpRequest.id, limit: 1 });
 
-  // Check if we should send the request
+  // Yaak calls onRender with purpose 'preview' continuously while a request tab
+  // is simply open, to keep template-tag previews live — not only on actual
+  // Send. 'always' must not act on every one of those, or opening a request
+  // silently re-sends the source request in a loop, hanging on anything slow.
+  // Matches Yaak's own built-in response plugin: 'always' is downgraded to
+  // 'smart' during preview.
+  const effectiveBehavior = behavior === 'always' && purpose === 'preview' ? 'smart' : behavior;
+
   const shouldSend =
-    behavior === 'always' ||
-    (behavior === 'smart' && purpose === 'send' && existing.length === 0);
+    effectiveBehavior === 'always' ||
+    (effectiveBehavior === 'smart' && existing.length === 0);
 
   if (shouldSend) {
     try {
+      // Render the outgoing request's own template tags first. This must stay
+      // inside this branch — rendering unconditionally here would recurse into
+      // this same function (render -> render -> ...).
+      const renderedHttpRequest = await ctx.httpRequest.render({ httpRequest, purpose });
+
       // send() takes the request itself, and now resolves to { httpResponse, body }.
       // The body is handed over here rather than looked up afterwards.
-      const sent = await ctx.httpRequest.send({ httpRequest });
+      const sent = await ctx.httpRequest.send({ httpRequest: renderedHttpRequest });
       return {
         httpResponse: sent.httpResponse,
         body: async () => sent.body,

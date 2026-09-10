@@ -57,8 +57,13 @@ async function resolveResponse(ctx, options) {
 		requestId: httpRequest.id,
 		limit: 1
 	});
-	if (behavior === "always" || behavior === "smart" && purpose === "send" && existing.length === 0) try {
-		const sent = await ctx.httpRequest.send({ httpRequest });
+	const effectiveBehavior = behavior === "always" && purpose === "preview" ? "smart" : behavior;
+	if (effectiveBehavior === "always" || effectiveBehavior === "smart" && existing.length === 0) try {
+		const renderedHttpRequest = await ctx.httpRequest.render({
+			httpRequest,
+			purpose
+		});
+		const sent = await ctx.httpRequest.send({ httpRequest: renderedHttpRequest });
 		return {
 			httpResponse: sent.httpResponse,
 			body: async () => sent.body

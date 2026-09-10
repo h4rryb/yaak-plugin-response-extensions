@@ -1,3 +1,22 @@
+# Version 0.3.1 - Fix eager sending on "Always"
+
+0.3.0 fixed response bodies but left a separate, pre-existing bug in the
+"Always" sending behaviour: it had no check on `purpose`, so it fired on
+every `preview` render — which Yaak triggers continuously just from having a
+request tab open, not only on an actual Send. If the source request was slow
+or unreachable, opening the dependent request's tab would hang.
+
+Yaak's own built-in `response.*` template functions handle this by
+downgrading "Always" to "When no responses" specifically during `preview`
+renders, and still sending every time on a real Send. 0.3.1 does the same.
+
+0.3.1 also renders the outgoing request's own template tags
+(`ctx.httpRequest.render()`) before sending it, which 0.3.0 did not do.
+
+No further Yaak version requirement change — still 2026.7.1+.
+
+---
+
 # Version 0.3.0 - Yaak 2026.7.1 Plugin API (Experimental)
 
 ## ⚠️ Breaking Change

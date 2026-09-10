@@ -1,5 +1,33 @@
 # Release Notes & Changelog
 
+## Version 0.3.1 - Fix eager sending on "Always"
+
+### 🐛 Fixes
+- **"Always" no longer fires just from opening a request tab.** Yaak calls a
+  template function's `onRender` continuously with `purpose: 'preview'`
+  whenever a request tab is open — not only when you press Send — to keep the
+  inline preview under each template tag live. The "Always" sending behaviour
+  had no purpose check, so it re-sent the source request on every one of those
+  preview renders. If that source request was slow or unreachable, each
+  preview render hung, which is what surfaced as a timeout just from opening a
+  request. "Always" is now downgraded to "When no responses" during preview
+  renders — matching the behaviour of Yaak's own built-in `response.*`
+  template functions — and still sends every time on an actual Send.
+- **The source request's own template tags are now rendered before sending.**
+  Previously the raw stored request was sent as-is; any `${[ ... ]}` tags
+  inside it (variables, chained values) went out unresolved. It's now passed
+  through `ctx.httpRequest.render()` first, inside the same guarded branch
+  that decides whether to send at all, to avoid render → render → ... recursion.
+
+### 📝 Migration
+No config changes. Rebuild and reload:
+```bash
+npm install
+npm run build
+```
+
+---
+
 ## Version 0.3.0 - Yaak 2026.7.1 Plugin API
 
 ### 💥 Breaking (Yaak)

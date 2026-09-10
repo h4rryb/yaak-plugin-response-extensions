@@ -1,6 +1,6 @@
 # Yaak Response Extensions Plugin
 
-**Version:** 0.3.0 (Experimental)
+**Version:** 0.3.1 (Experimental)
 
 ⚠️ **Experimental Status**: This plugin uses Yaak's experimental plugin API. While stable and production-ready, we use 0.x versioning to reflect that Yaak's plugin system is still evolving.
 
