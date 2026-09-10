@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "apiTypes": [
+    "templateFunctions"
+  ],
+  "apis": {
+    "templateFunctions": {
+      "label": "Template Tag",
+      "source": "templateFunctions",
+      "count": 4,
+      "items": [
+        {
+          "name": "responseExtensions.oauth2",
+          "description": "Extract OAuth2 token details from a request (accessToken, refreshToken, etc.)",
+          "args": [
+            {
+              "type": "http_request",
+              "name": "request",
+              "label": "Source Request"
+            },
+            {
+              "type": "text",
+              "name": "filter",
+              "label": "JSONPath Filter",
+              "placeholder": "$.accessToken",
+              "defaultValue": "$.accessToken"
+            },
+            {
+              "type": "select",
+              "name": "behavior",
+              "label": "Sending Behavior",
+              "defaultValue": "smart",
+              "options": [
+                {
+                  "label": "When no responses",
+                  "value": "smart"
+                },
+                {
+                  "label": "Always",
+                  "value": "always"
+                },
+                {
+                  "label": "Never",
+                  "value": "never"
+                }
+              ]
+            }
+          ],
+          "previewArgs": [
+            "request",
+            "filter"
+          ]
+        },
+        {
+          "name": "responseExtensions.response",
+          "description": "Extract extended response metadata (statusCode, headers, contentType, etc.)",
+          "args": [
+            {
+              "type": "http_request",
+              "name": "request",
+              "label": "Source Request"
+            },
+            {
+              "type": "text",
+              "name": "filter",
+              "label": "JSONPath Filter",
+              "placeholder": "$.statusCode",
+              "defaultValue": "$.statusCode"
+            },
+            {
+              "type": "select",
+              "name": "behavior",
+              "label": "Sending Behavior",
+              "defaultValue": "smart",
+              "options": [
+                {
+                  "label": "When no responses",
+                  "value": "smart"
+                },
+                {
+                  "label": "Always",
+                  "value": "always"
+                },
+                {
+                  "label": "Never",
+                  "value": "never"
+                }
+              ]
+            }
+          ],
+          "previewArgs": [
+            "request",
+            "filter"
+          ]
+        },
+        {
+          "name": "responseExtensions.body",
+          "description": "Extract data from response body using JSONPath",
+          "args": [
+            {
+              "type": "http_request",
+              "name": "request",
+              "label": "Source Request"
+            },
+            {
+              "type": "text",
+              "name": "filter",
+              "label": "JSONPath Filter",
+              "placeholder": "$.token",
+              "defaultValue": "$"
+            },
+            {
+              "type": "select",
+              "name": "behavior",
+              "label": "Sending Behavior",
+              "defaultValue": "smart",
+              "options": [
+                {
+                  "label": "When no responses",
+                  "value": "smart"
+                },
+                {
+                  "label": "Always",
+                  "value": "always"
+                },
+                {
+                  "label": "Never",
+                  "value": "never"
+                }
+              ]
+            }
+          ],
+          "previewArgs": [
+            "request",
+            "filter"
+          ]
+        },
+        {
+          "name": "responseExtensions",
+          "description": "Generic response extensions - access OAuth2, response metadata, or body",
+          "args": [
+            {
+              "type": "http_request",
+              "name": "request",
+              "label": "Source Request"
+            },
+            {
+              "type": "select",
+              "name": "attribute",
+              "label": "Attribute Type",
+              "defaultValue": "body",
+              "options": [
+                {
+                  "label": "Response Body",
+                  "value": "body"
+                },
+                {
+                  "label": "OAuth2 Token",
+                  "value": "oauth2"
+                },
+                {
+                  "label": "Response Metadata",
+                  "value": "response"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "filter",
+              "label": "JSONPath Filter",
+              "placeholder": "$.token",
+              "defaultValue": "$"
+            },
+            {
+              "type": "select",
+              "name": "behavior",
+              "label": "Sending Behavior",
+              "defaultValue": "smart",
+              "options": [
+                {
+                  "label": "When no responses",
+                  "value": "smart"
+                },
+                {
+                  "label": "Always",
+                  "value": "always"
+                },
+                {
+                  "label": "Never",
+                  "value": "never"
+                }
+              ]
+            }
+          ],
+          "previewArgs": [
+            "request",
+            "attribute",
+            "filter"
+          ]
+        }
+      ]
+    }
+  }
+}

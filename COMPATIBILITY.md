@@ -1,3 +1,117 @@
+# Version 0.3.0 - Yaak 2026.7.1 Plugin API (Experimental)
+
+## ⚠️ Breaking Change
+
+**Plugin 0.3.0 requires Yaak 2026.7.1 or newer and will not work on older Yaak versions.**
+
+Yaak 2026.7.1 shipped a breaking change to the plugin API. Plugin 0.2.0 and
+earlier are broken on it, and 0.3.0 cannot run on anything older.
+
+| Your Yaak version | Use plugin version |
+|---|---|
+| 2026.7.1 and newer | **0.3.0** |
+| 2026.3.1 and older | 0.2.0 |
+
+## What Changed in Yaak
+
+### 1. `HttpResponse.bodyPath` was removed
+Previously a plugin could read a response body straight off disk:
+
+```ts
+// No longer possible — the field does not exist in @yaakapp/api 0.9.0
+const body = readFileSync(response.bodyPath, 'utf-8');
+```
+
+Bodies are now read through an accessor, so plugins no longer depend on where
+the host stores the bytes:
+
+```ts
+const body = await ctx.httpResponse.body({ responseId: response.id });
+const text = await body.text();   // also .json(), .arrayBuffer(), .chunks()
+```
+
+**This was the actual cause of the plugin breaking.** `responseExtensions.body`
+read `response.bodyPath`, which became `undefined`.
+
+### 2. `ctx.httpRequest.send()` now resolves to `{ httpResponse, body }`
+It used to resolve to the `HttpResponse` alone. The body is handed back with the
+response because a request with no id is never saved, so there would be nothing
+to look up afterwards.
+
+```ts
+const { httpResponse, body } = await ctx.httpRequest.send({ httpRequest });
+```
+
+## What Changed in the Plugin
+
+### Fixed: response bodies (the reported bug)
+Cached responses use `ctx.httpResponse.body({ responseId })`; freshly sent ones
+use the `body` returned by `send()`.
+
+### Fixed: `send()` argument shape
+The plugin called `ctx.httpRequest.send({ id })`. The correct shape is
+`{ httpRequest }`, and always has been — so the **"Always"** and **"When no
+responses"** sending behaviours had never actually sent anything, on any Yaak
+version.
+
+### Fixed: OAuth2 detection
+The plugin checked `authentication.type`. The scheme is on
+`httpRequest.authenticationType`; the `authentication` record holds the config.
+Every request therefore looked non-OAuth2 and `responseExtensions.oauth2`
+always returned `null`.
+
+### Fixed: response metadata fields
+Three fields read properties that do not exist on `HttpResponse` and silently
+returned empty values:
+
+| Field | Was reading | Now reads |
+|---|---|---|
+| `statusMessage` | `response.statusText` ❌ | `response.statusReason` |
+| `contentType` | `response.contentType` ❌ | the `Content-Type` header |
+| `bytesRead` | `response.size` ❌ | `response.contentLength` |
+
+### Fixed: `tsconfig.json` covered no source
+`include` was `["index.ts"]`, but the source lives at `src/index.ts`. Nothing
+was ever type-checked, which is why the errors above went unnoticed. Now
+`["src/**/*.ts"]`.
+
+### Added
+- `remoteAddr`, `httpVersion`, `state` and `error` on response metadata
+- Failed source requests are logged rather than yielding a null body
+- `responseExtensions.response` no longer opens a body it never reads
+- The generic `responseExtensions` delegates by name, not array index
+
+## Build Requirements
+
+`@yaakapp/cli` moved to calendar versioning (`2026.7.1`) and **requires Node.js
+24 or newer**. The build also now emits `build/metadata.json` alongside
+`build/index.js`; both belong in the repository.
+
+```bash
+node --version   # must be v24 or higher
+npm install
+npm run build
+```
+
+## Known Limitation
+
+`responseExtensions.oauth2` reads the source request's stored authentication
+config. Yaak's built-in OAuth2 provider may keep negotiated tokens in its own
+plugin store rather than on the request, in which case `$.accessToken` returns
+empty. There is currently no public plugin API for reading another request's
+negotiated tokens. Workaround: pull the token from the token endpoint's
+response body with `responseExtensions.body`.
+
+---
+
+**Plugin Version:** 0.3.0 (Experimental)  
+**Yaak Compatibility:** 2026.7.1 and newer  
+**API Version:** 0.9.0
+
+---
+
+# Previous Releases
+
 # Version 0.2.0 - Latest Yaak Compatibility Update (Experimental)
 
 ## 🔄 Compatibility Fix for Latest Yaak Versions

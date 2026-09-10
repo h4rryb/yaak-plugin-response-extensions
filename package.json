@@ -2,7 +2,7 @@
   "name": "@harry/response-extensions",
   "displayName": "Response Extensions",
   "description": "Access OAuth2 tokens and other extended response attributes from other requests",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Harry Brayford",
   "license": "MIT",
   "keywords": [
@@ -22,10 +22,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.9",
-    "@yaakapp/cli": "^0.2.6",
+    "@yaakapp/cli": "^2026.7.1",
     "typescript": "^5.5.2"
   },
   "dependencies": {
-    "@yaakapp/api": "^0.8.3"
+    "@yaakapp/api": "^0.9.0"
   }
 }

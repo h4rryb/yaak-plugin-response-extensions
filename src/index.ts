@@ -1,13 +1,25 @@
-import type { PluginDefinition, Context, CallTemplateFunctionArgs, HttpRequest, HttpResponse, RenderPurpose, FormInput } from '@yaakapp/api';
-import { readFileSync } from 'node:fs';
+import type {
+  PluginDefinition,
+  Context,
+  CallTemplateFunctionArgs,
+  HttpResponse,
+  HttpResponseBody,
+  RenderPurpose,
+  FormInput,
+} from '@yaakapp/api';
 
 /**
- * Yaak plugin to access extended response attributes including OAuth2 tokens
- * This replicates the functionality of insomnia-plugin-response-extensions
- */ 
+ * Yaak plugin to access extended response attributes including OAuth2 tokens.
+ * This replicates the functionality of insomnia-plugin-response-extensions.
+ *
+ * Requires @yaakapp/api >= 0.9.0 (Yaak 2026.7.1+), where:
+ *   - `ctx.httpRequest.send()` resolves to `{ httpResponse, body }`
+ *   - `HttpResponse.bodyPath` no longer exists
+ *   - bodies are read via `ctx.httpResponse.body({ responseId })`
+ */
 
 /**
- * Simple JSONPath implementation for basic queries
+ * Simple JSONPath implementation for basic queries.
  * Supports: $, $.field, $.array[0], $.nested.field
  */
 function applyJSONPath(data: any, path: string): any {
@@ -26,7 +38,7 @@ function applyJSONPath(data: any, path: string): any {
     const arrayMatch = part.match(/^(.+?)\[(\d+)\]$/);
     if (arrayMatch) {
       const [, fieldName, index] = arrayMatch;
-      result = result?.[fieldName]?.[parseInt(index)];
+      result = result?.[fieldName]?.[parseInt(index, 10)];
     } else {
       result = result?.[part];
     }
@@ -39,17 +51,53 @@ function applyJSONPath(data: any, path: string): any {
   return result;
 }
 
+/** Render a JSONPath result as the string Yaak will substitute into the template. */
+function renderResult(result: any): string | null {
+  if (result === null || result === undefined) return null;
+  return typeof result === 'object' ? JSON.stringify(result) : String(result);
+}
+
+/** Case-insensitive response header lookup. */
+function headerValue(
+  headers: HttpResponse['headers'] | null | undefined,
+  name: string,
+): string | null {
+  const wanted = name.toLowerCase();
+  for (const header of headers ?? []) {
+    if (header.name?.toLowerCase() === wanted) return header.value;
+  }
+  return null;
+}
+
+/** Read a template arg as a string, treating empty/absent as undefined. */
+function stringArg(args: CallTemplateFunctionArgs, name: string): string | undefined {
+  const value = args.values[name];
+  if (value === null || value === undefined || value === '') return undefined;
+  return String(value);
+}
+
 /**
- * Get the appropriate response for a request based on behavior and purpose
+ * A response plus a lazy handle on its body.
+ *
+ * The body is deliberately not opened up front: `responseExtensions.response`
+ * only needs metadata, and opening a body it never reads costs a round trip.
  */
-async function getResponse(
+interface ResolvedResponse {
+  httpResponse: HttpResponse;
+  body: () => Promise<HttpResponseBody>;
+}
+
+/**
+ * Get the appropriate response for a request based on behavior and purpose.
+ */
+async function resolveResponse(
   ctx: Context,
   options: {
     requestId: string;
     purpose: RenderPurpose;
     behavior: string | null;
-  }
-): Promise<HttpResponse | null> {
+  },
+): Promise<ResolvedResponse | null> {
   const { requestId, purpose, behavior } = options;
 
   if (!requestId) return null;
@@ -59,26 +107,37 @@ async function getResponse(
     return null;
   }
 
-  const responses = await ctx.httpResponse.find({ requestId: httpRequest.id });
+  const existing = await ctx.httpResponse.find({ requestId: httpRequest.id, limit: 1 });
 
   // Check if we should send the request
   const shouldSend =
     behavior === 'always' ||
-    (behavior === 'smart' && purpose === 'send' && responses.length === 0);
+    (behavior === 'smart' && purpose === 'send' && existing.length === 0);
 
   if (shouldSend) {
     try {
-      await ctx.httpRequest.send({ id: httpRequest.id });
-      // Re-fetch responses after sending
-      const newResponses = await ctx.httpResponse.find({ requestId: httpRequest.id });
-      return newResponses[0] ?? null;
+      // send() takes the request itself, and now resolves to { httpResponse, body }.
+      // The body is handed over here rather than looked up afterwards.
+      const sent = await ctx.httpRequest.send({ httpRequest });
+      return {
+        httpResponse: sent.httpResponse,
+        body: async () => sent.body,
+      };
     } catch (err) {
-      console.error('Failed to send request:', err);
+      console.error('[response-extensions] Failed to send request:', err);
       return null;
     }
   }
 
-  return responses[0] ?? null;
+  const httpResponse = existing[0];
+  if (httpResponse == null) return null;
+
+  return {
+    httpResponse,
+    // Saved responses are looked up by id; where the host keeps the bytes is not
+    // something the plugin needs to know.
+    body: async () => ctx.httpResponse.body({ responseId: httpResponse.id }),
+  };
 }
 
 const requestArg: FormInput = {
@@ -99,6 +158,159 @@ const behaviorArg: FormInput = {
   ],
 };
 
+/**
+ * Extract OAuth2 token details from a request's authentication config.
+ */
+async function renderOAuth2(
+  ctx: Context,
+  args: CallTemplateFunctionArgs,
+): Promise<string | null> {
+  const requestId = stringArg(args, 'request');
+  if (!requestId) return null;
+
+  try {
+    const httpRequest = await ctx.httpRequest.getById({ id: requestId });
+    if (!httpRequest) return null;
+
+    // `authenticationType` names the scheme; `authentication` holds its config.
+    if (httpRequest.authenticationType !== 'oauth2') {
+      console.error(
+        '[response-extensions] Request does not have OAuth2 authentication configured',
+      );
+      return null;
+    }
+
+    const auth: Record<string, any> = httpRequest.authentication ?? {};
+
+    // Build OAuth2 data object similar to Insomnia's structure
+    const oauth2Data = {
+      type: 'OAuth2Token',
+      parentId: httpRequest.id,
+      modified: httpRequest.updatedAt,
+      created: httpRequest.createdAt,
+      accessToken: auth.accessToken ?? null,
+      refreshToken: auth.refreshToken ?? null,
+      identityToken: auth.identityToken ?? null,
+      expiresAt: auth.expiresAt ?? null,
+      error: auth.error ?? null,
+      errorDescription: auth.errorDescription ?? null,
+      errorUri: auth.errorUri ?? null,
+    };
+
+    return renderResult(applyJSONPath(oauth2Data, stringArg(args, 'filter') ?? '$.accessToken'));
+  } catch (error) {
+    console.error('[response-extensions] Error extracting OAuth2 data:', error);
+    return null;
+  }
+}
+
+/**
+ * Extract extended response metadata.
+ */
+async function renderResponseMeta(
+  ctx: Context,
+  args: CallTemplateFunctionArgs,
+): Promise<string | null> {
+  const requestId = stringArg(args, 'request');
+  if (!requestId) return null;
+
+  try {
+    const resolved = await resolveResponse(ctx, {
+      requestId,
+      purpose: args.purpose,
+      behavior: stringArg(args, 'behavior') ?? 'smart',
+    });
+
+    if (resolved == null) return null;
+
+    const response = resolved.httpResponse;
+
+    // Build response metadata object similar to Insomnia's structure
+    const responseData = {
+      _id: response.id,
+      type: 'Response',
+      parentId: response.requestId,
+      modified: response.updatedAt,
+      created: response.createdAt,
+      statusCode: response.status,
+      statusMessage: response.statusReason ?? '',
+      contentType: headerValue(response.headers, 'content-type') ?? '',
+      url: response.url ?? '',
+      headers: response.headers ?? [],
+      elapsedTime: response.elapsed ?? 0,
+      bytesRead: response.contentLength ?? 0,
+      remoteAddr: response.remoteAddr ?? null,
+      httpVersion: response.version ?? null,
+      state: response.state,
+      error: response.error ?? null,
+    };
+
+    return renderResult(applyJSONPath(responseData, stringArg(args, 'filter') ?? '$.statusCode'));
+  } catch (error) {
+    console.error('[response-extensions] Error extracting response data:', error);
+    return null;
+  }
+}
+
+/**
+ * Extract data from a response body using JSONPath.
+ */
+async function renderBody(
+  ctx: Context,
+  args: CallTemplateFunctionArgs,
+): Promise<string | null> {
+  const requestId = stringArg(args, 'request');
+  if (!requestId) return null;
+
+  try {
+    const resolved = await resolveResponse(ctx, {
+      requestId,
+      purpose: args.purpose,
+      behavior: stringArg(args, 'behavior') ?? 'smart',
+    });
+
+    if (resolved == null) return null;
+
+    if (resolved.httpResponse.error) {
+      console.error(
+        '[response-extensions] Source request failed:',
+        resolved.httpResponse.error,
+      );
+      return null;
+    }
+
+    const filter = stringArg(args, 'filter') ?? '$';
+
+    // Read the response body. This waits for a response that is still arriving.
+    let text: string;
+    try {
+      const body = await resolved.body();
+      text = await body.text();
+    } catch (err) {
+      console.error('[response-extensions] Failed to read response body:', err);
+      return null;
+    }
+
+    // Try to parse as JSON
+    let bodyData: unknown;
+    try {
+      bodyData = JSON.parse(text);
+    } catch (err) {
+      // If not JSON, return the raw text when the filter is the root
+      if (filter === '$') {
+        return text;
+      }
+      console.error('[response-extensions] Response body is not JSON:', err);
+      return null;
+    }
+
+    return renderResult(applyJSONPath(bodyData, filter));
+  } catch (error) {
+    console.error('[response-extensions] Error extracting body data:', error);
+    return null;
+  }
+}
+
 export const plugin: PluginDefinition = {
   templateFunctions: [
     {
@@ -116,56 +328,7 @@ export const plugin: PluginDefinition = {
         behaviorArg,
       ],
       previewArgs: ['request', 'filter'],
-      async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
-        if (!args.values.request) return null;
-
-        try {
-          const httpRequest = await ctx.httpRequest.getById({ id: args.values.request });
-          if (!httpRequest) return null;
-
-          // Get OAuth2 authentication data from the request
-          const auth = httpRequest.authentication;
-          
-          // Check if this request uses OAuth2 authentication
-          if (!auth || auth.type !== 'oauth2') {
-            console.error('Request does not have OAuth2 authentication configured');
-            return null;
-          }
-
-          // Build OAuth2 data object similar to Insomnia's structure
-          const oauth2Data = {
-            type: 'OAuth2Token',
-            parentId: httpRequest.id,
-            modified: httpRequest.updatedAt,
-            created: httpRequest.createdAt,
-            accessToken: auth.accessToken || null,
-            refreshToken: auth.refreshToken || null,
-            identityToken: auth.identityToken || null,
-            expiresAt: auth.expiresAt || null,
-            error: auth.error || null,
-            errorDescription: auth.errorDescription || null,
-            errorUri: auth.errorUri || null,
-          };
-
-          // Apply JSONPath filter
-          const filter = args.values.filter || '$.accessToken';
-          const result = applyJSONPath(oauth2Data, filter);
-
-          if (result !== null && result !== undefined) {
-            // If result is an object or array, stringify it
-            if (typeof result === 'object') {
-              return JSON.stringify(result);
-            }
-            // Otherwise return as string
-            return String(result);
-          }
-
-          return null;
-        } catch (error) {
-          console.error('Error extracting OAuth2 data:', error);
-          return null;
-        }
-      },
+      onRender: renderOAuth2,
     },
     {
       name: 'responseExtensions.response',
@@ -182,53 +345,7 @@ export const plugin: PluginDefinition = {
         behaviorArg,
       ],
       previewArgs: ['request', 'filter'],
-      async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
-        if (!args.values.request) return null;
-
-        try {
-          const response = await getResponse(ctx, {
-            requestId: args.values.request,
-            purpose: args.purpose,
-            behavior: args.values.behavior ?? 'smart',
-          });
-
-          if (response == null) return null;
-
-          // Build response metadata object similar to Insomnia's structure
-          const responseData = {
-            _id: response.id,
-            type: 'Response',
-            parentId: response.requestId,
-            modified: response.updatedAt,
-            created: response.createdAt,
-            statusCode: response.status,
-            statusMessage: response.statusText || '',
-            contentType: response.contentType || '',
-            url: response.url || '',
-            headers: response.headers || [],
-            elapsedTime: response.elapsed || 0,
-            bytesRead: response.size || 0,
-          };
-
-          // Apply JSONPath filter
-          const filter = args.values.filter || '$.statusCode';
-          const result = applyJSONPath(responseData, filter);
-
-          if (result !== null && result !== undefined) {
-            // If result is an object or array, stringify it
-            if (typeof result === 'object') {
-              return JSON.stringify(result);
-            }
-            // Otherwise return as string
-            return String(result);
-          }
-
-          return null;
-        } catch (error) {
-          console.error('Error extracting response data:', error);
-          return null;
-        }
-      },
+      onRender: renderResponseMeta,
     },
     {
       name: 'responseExtensions.body',
@@ -245,59 +362,7 @@ export const plugin: PluginDefinition = {
         behaviorArg,
       ],
       previewArgs: ['request', 'filter'],
-      async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
-        if (!args.values.request) return null;
-
-        try {
-          const response = await getResponse(ctx, {
-            requestId: args.values.request,
-            purpose: args.purpose,
-            behavior: args.values.behavior ?? 'smart',
-          });
-
-          if (response == null || response.bodyPath == null) return null;
-
-          // Read the response body
-          let body;
-          try {
-            body = readFileSync(response.bodyPath, 'utf-8');
-          } catch (err) {
-            console.error('Failed to read response body:', err);
-            return null;
-          }
-
-          // Try to parse as JSON
-          let bodyData;
-          try {
-            bodyData = JSON.parse(body);
-          } catch (err) {
-            // If not JSON, return as string if filter is $
-            if (args.values.filter === '$' || !args.values.filter) {
-              return body;
-            }
-            console.error('Response body is not JSON:', err);
-            return null;
-          }
-
-          // Apply JSONPath filter
-          const filter = args.values.filter || '$';
-          const result = applyJSONPath(bodyData, filter);
-
-          if (result !== null && result !== undefined) {
-            // If result is an object or array, stringify it
-            if (typeof result === 'object') {
-              return JSON.stringify(result);
-            }
-            // Otherwise return as string
-            return String(result);
-          }
-
-          return null;
-        } catch (error) {
-          console.error('Error extracting body data:', error);
-          return null;
-        }
-      },
+      onRender: renderBody,
     },
     {
       name: 'responseExtensions',
@@ -326,20 +391,20 @@ export const plugin: PluginDefinition = {
       ],
       previewArgs: ['request', 'attribute', 'filter'],
       async onRender(ctx: Context, args: CallTemplateFunctionArgs): Promise<string | null> {
-        if (!args.values.request) return null;
+        if (!stringArg(args, 'request')) return null;
 
-        const attribute = args.values.attribute || 'body';
-
-        // Delegate to the appropriate specialized function based on attribute type
-        if (attribute === 'oauth2') {
-          return plugin.templateFunctions![0].onRender(ctx, args);
-        } else if (attribute === 'response') {
-          return plugin.templateFunctions![1].onRender(ctx, args);
-        } else if (attribute === 'body') {
-          return plugin.templateFunctions![2].onRender(ctx, args);
+        // Delegate by name rather than by array index, so reordering the
+        // template functions above can't silently rewire this.
+        switch (stringArg(args, 'attribute') ?? 'body') {
+          case 'oauth2':
+            return renderOAuth2(ctx, args);
+          case 'response':
+            return renderResponseMeta(ctx, args);
+          case 'body':
+            return renderBody(ctx, args);
+          default:
+            return null;
         }
-
-        return null;
       },
     },
   ],
