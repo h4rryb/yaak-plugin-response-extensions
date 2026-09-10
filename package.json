@@ -14,7 +14,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/h4rryb/yaak-response-extensions"
+    "url": "https://github.com/h4rryb/yaak-plugin-response-extensions"
   },
   "scripts": {
     "build": "yaakcli build",
@@ -27,5 +27,9 @@
   },
   "dependencies": {
     "@yaakapp/api": "^0.9.0"
+  },
+  "homepage": "https://github.com/h4rryb/yaak-plugin-response-extensions",
+  "bugs": {
+    "url": "https://github.com/h4rryb/yaak-plugin-response-extensions/issues"
   }
 }
